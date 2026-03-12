@@ -2,13 +2,18 @@
 Full pipeline entry point.
 
 Runs all stages sequentially:
-  1. fetch_massive_data  (requires API key + tickers file)
+  1. fetch_massive_data
   2. build_intraday_panel
   3. build_signals
   4. train_esn
   5. evaluate
 
-Pass --help for options, or set environment variables.
+Usage:
+    # Read API key automatically from config/massive_key.txt (default)
+    python scripts/run_all.py
+
+    # Or pass key explicitly
+    python scripts/run_all.py --api-key YOUR_KEY
 """
 
 import argparse
@@ -25,12 +30,27 @@ SCRIPTS_DIR = Path(__file__).parent
 
 def run(cmd: list[str]) -> None:
     logger.info("Running: %s", " ".join(cmd))
-    result = subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True)
+
+
+def resolve_api_key(args) -> str:
+    """Resolve API key: CLI argument takes priority, then key file."""
+    if args.api_key:
+        return args.api_key
+    key_file = Path(args.api_key_file)
+    if key_file.exists():
+        key = key_file.read_text().strip().splitlines()[0].strip()
+        if key:
+            logger.info("API key loaded from %s", key_file)
+            return key
+    logger.error("No API key provided. Use --api-key or place key in %s", args.api_key_file)
+    sys.exit(1)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run full ESN pipeline")
-    parser.add_argument("--api-key", required=True)
+    parser.add_argument("--api-key", default=None, help="Massive/Polygon API key (overrides --api-key-file)")
+    parser.add_argument("--api-key-file", default="config/massive_key.txt", help="Path to file containing API key")
     parser.add_argument("--tickers-file", default="data/raw/candidate_tickers.txt")
     parser.add_argument("--from-date", default="2024-09-01")
     parser.add_argument("--to-date", default="2025-12-31")
@@ -43,8 +63,9 @@ def main() -> None:
     py = sys.executable
 
     if not args.skip_fetch:
+        api_key = resolve_api_key(args)
         run([py, str(SCRIPTS_DIR / "fetch_massive_data.py"),
-             "--api-key", args.api_key,
+             "--api-key", api_key,
              "--tickers-file", args.tickers_file,
              "--from-date", args.from_date,
              "--to-date", args.to_date])
