@@ -93,7 +93,17 @@ pip install numpy pandas scipy scikit-learn pyyaml matplotlib tqdm pyarrow reque
 
 ## 快速啟動
 
-### 步驟一：準備候選股票清單
+### 步驟一：設定 API 金鑰
+
+將 Polygon API 金鑰存入 `config/massive_key.txt`（第一行）：
+
+```
+YOUR_POLYGON_API_KEY
+```
+
+> 此檔案已被 `.gitignore` 排除，不會被 commit。
+
+### 步驟二：準備候選股票清單
 
 建立 `data/raw/candidate_tickers.txt`，每行一個股票代碼（建議從 Russell 1000 或 S&P 500 成分股開始）：
 
@@ -104,9 +114,13 @@ NVDA
 ...
 ```
 
-### 步驟二：一鍵執行完整管線
+### 步驟三：一鍵執行完整管線
 
 ```bash
+# 金鑰自動從 config/massive_key.txt 讀取
+python scripts/run_all.py
+
+# 或手動指定金鑰（覆蓋金鑰檔案）
 python scripts/run_all.py --api-key YOUR_POLYGON_API_KEY
 ```
 
@@ -114,18 +128,17 @@ python scripts/run_all.py --api-key YOUR_POLYGON_API_KEY
 
 ```bash
 # 資料已抓取，從建立面板開始
-python scripts/run_all.py --api-key KEY --skip-fetch
+python scripts/run_all.py --skip-fetch
 
 # 面板已建立，從信號開始
-python scripts/run_all.py --api-key KEY --skip-fetch --skip-panel
+python scripts/run_all.py --skip-fetch --skip-panel
 ```
 
-### 步驟三：逐步執行（可選）
+### 步驟四：逐步執行（可選）
 
 ```bash
 # 1. 抓取 Polygon 分鐘資料（依速率限制自動控速，12 秒/請求）
 python scripts/fetch_massive_data.py \
-    --api-key YOUR_KEY \
     --tickers-file data/raw/candidate_tickers.txt \
     --from-date 2024-09-01 \
     --to-date 2025-12-31
@@ -173,7 +186,8 @@ python -m pytest tests/ -v
 
 1. 至 [polygon.io](https://polygon.io) 免費註冊
 2. Basic 方案：每分鐘 5 次請求、2 年歷史資料、1 分鐘聚合
-3. 本系統已內建速率控制（12 秒間隔）與本地快取，不會重複請求已快取資料
+3. 將金鑰存入 `config/massive_key.txt`（第一行），腳本會自動讀取；亦可用 `--api-key` 手動覆蓋
+4. 本系統已內建速率控制（12 秒間隔）與本地快取，不會重複請求已快取資料
 
 ---
 
