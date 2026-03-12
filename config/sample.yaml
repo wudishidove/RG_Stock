@@ -1,0 +1,22 @@
+# Sample period and session definition
+tuning_start: "2024-09-01"
+tuning_end:   "2024-12-31"
+test_start:   "2025-01-01"
+test_end:     "2025-12-31"
+
+session:
+  open_time:  "09:30"   # ET inclusive start
+  close_time: "16:00"   # ET inclusive end (last bar close)
+  last_signal_time: "15:50"   # last actionable bar
+  timezone: "America/New_York"
+
+universe:
+  n_stocks: 500
+  ranking_metric: "dollar_volume"   # L2 approximation
+  ranking_period: "tuning"          # use tuning pre-sample for ranking
+
+massive:
+  base_url: "https://api.polygon.io"   # Massive = Polygon-compatible endpoint
+  rate_limit_calls_per_min: 5
+  rate_limit_delay_sec: 12.0
+  page_limit: 50000

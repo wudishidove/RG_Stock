@@ -1,0 +1,21 @@
+# Global settings
+random_seed: 42
+n_jobs: 1
+
+pca:
+  n_components: 15          # J = 15 market factors
+  min_variance_explained: 0.90
+
+missing_data:
+  max_ffill_bars: 3         # L3 assumption: cap forward-fill at 3 bars (~30 min)
+  max_missing_fraction: 0.20  # L3 assumption: exclude stocks >20% missing
+
+paths:
+  raw_dir: data/raw/tickers
+  interim_dir: data/interim
+  processed_dir: data/processed
+  results_dir: results
+
+evaluation:
+  dm_lags_multiplier: 1     # HAC lag = horizon_steps * multiplier
+  mcs_alpha: 0.10           # MCS significance level
