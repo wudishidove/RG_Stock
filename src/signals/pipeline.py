@@ -30,7 +30,7 @@ def build_signals_causal(
     n_pca_components: int = 15,
     p_levels: list[int] = _P_LEVELS,
     max_missing_fraction: float = 0.20,
-    eps: float = 1e-10,
+    eps: float = 1e-6,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Build (T × N × D) signal array causally.

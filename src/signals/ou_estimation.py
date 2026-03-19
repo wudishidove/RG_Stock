@@ -91,15 +91,15 @@ def ou_parameters(
             if np.isnan(cu):
                 continue
             # Stability safeguard
-            cu_clipped = np.clip(cu, eps, 1.0 - eps)
+            cu_clipped = np.clip(cu, 0.01, 0.98)
             kappa_i = -np.log(cu_clipped)
             m_i = c0 / (1.0 - cu_clipped)
-            if kappa_i < eps or sigma2_eta < 0:
+            if kappa_i < 0.01 or sigma2_eta < 0:
                 continue
             sigma_i = np.sqrt(max(sigma2_eta, 0.0) / (2.0 * kappa_i))
             kappa[i] = kappa_i
             m[i] = m_i
-            sigma[i] = max(sigma_i, eps)
+            sigma[i] = max(sigma_i, 1e-4)
 
         result[P] = {"kappa": kappa, "m": m, "sigma": sigma}
 

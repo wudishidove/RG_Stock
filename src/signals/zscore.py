@@ -10,7 +10,7 @@ from __future__ import annotations
 import numpy as np
 
 _P_LEVELS = [10, 20, 30, 60, 100, 150]
-_EPS = 1e-10
+_EPS = 1e-6
 
 
 def modified_zscore(
@@ -35,7 +35,7 @@ def modified_zscore(
     """
     kappa = ou_params["kappa"]
     m = ou_params["m"]
-    sigma = np.maximum(ou_params["sigma"], eps)
+    sigma = np.maximum(ou_params["sigma"], 1e-4)
 
     # OU mean-reversion signal
     z1 = (U_hat - m) / sigma
@@ -45,7 +45,8 @@ def modified_zscore(
     denom_safe = np.where(np.abs(denom) < eps, np.nan, denom)
     z2 = drift / denom_safe
 
-    return z1 - z2
+    z = z1 - z2
+    return np.clip(z, -10.0, 10.0)
 
 
 def build_signal_vector(

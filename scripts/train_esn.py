@@ -78,19 +78,22 @@ def main() -> None:
             train_window_bars=cfg.train_window_bars,
             buffer_bars=cfg.buffer_bars,
             horizon_steps=max(cfg.horizon_steps, 1),
+            cv_lookback_days=cfg.cv_lookback_days,
+            cv_split=cfg.cv_split,
         )
 
-        logger.info("Rolling predictions...")
-        # Target for training: shifted targets
-        h = max(cfg.horizon_steps, 1)
-        train_targets = np.full_like(targets, np.nan)
-        train_targets[:-h] = targets[:-h]   # targets[t] = return at t+h
+        # Compute session boundaries (first bar of each trading day)
+        dates = close_panel.index.to_series().dt.date
+        session_boundaries = (dates != dates.shift(1)).values
 
+        logger.info("Rolling predictions (with daily CV for lambda)...")
         valid_targets = ~np.isnan(targets)
         train_valid = validity & valid_targets
 
         predictions, pred_valid = rolling_predictions(
-            states, targets, train_valid, rw_cfg, lambda_=cfg.lambda_ridge
+            states, targets, train_valid, rw_cfg,
+            lambda_=cfg.lambda_ridge,
+            session_boundaries=session_boundaries,
         )
 
         # Save predictions

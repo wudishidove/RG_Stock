@@ -12,10 +12,12 @@ For pooled forecasting: stack all stocks × time steps in train window.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
+
+from .cross_validation import daily_cv_lambda, _DEFAULT_LAMBDA_GRID
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,12 @@ class RollingWindowConfig:
     train_window_bars: int   # M
     buffer_bars: int         # tau_h
     horizon_steps: int       # h
+    bars_per_day: int = 39
+    cv_lookback_days: int = 5
+    cv_split: float = 0.7
+    lambda_candidates: list[float] = field(
+        default_factory=lambda: list(_DEFAULT_LAMBDA_GRID)
+    )
 
 
 def get_train_indices(
@@ -53,6 +61,7 @@ def rolling_predictions(
     cfg: RollingWindowConfig,
     lambda_: float = 1e-4,
     refit_every: int = 1,
+    session_boundaries: np.ndarray | None = None,  # (T,) bool: True at first bar of each day
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Generate rolling predictions for all time steps and stocks.
@@ -67,8 +76,33 @@ def rolling_predictions(
     pred_valid = np.zeros((T, N), dtype=bool)
 
     last_beta = None
+    current_lambda = lambda_
+
+    # Pre-compute day boundaries for CV
+    if session_boundaries is None:
+        # Fallback: treat every bars_per_day bars as a new day
+        session_boundaries = np.zeros(T, dtype=bool)
+        session_boundaries[::cfg.bars_per_day] = True
+
+    cv_lookback_bars = cfg.cv_lookback_days * cfg.bars_per_day
 
     for t in range(T):
+        # Daily CV: select lambda at each new trading day
+        if session_boundaries[t] and t >= cv_lookback_bars:
+            cv_start = t - cv_lookback_bars
+            cv_states = states[cv_start:t]
+            cv_targets = targets[cv_start:t]
+            cv_valid = valid_mask[cv_start:t]
+            try:
+                current_lambda = daily_cv_lambda(
+                    cv_states, cv_targets, cv_valid,
+                    lambda_candidates=cfg.lambda_candidates,
+                    cv_split=cfg.cv_split,
+                )
+                logger.debug("CV at t=%d selected lambda=%.2e", t, current_lambda)
+            except Exception:
+                pass  # keep previous lambda
+
         idx = get_train_indices(t, cfg)
         if idx is None:
             continue
@@ -94,7 +128,7 @@ def rolling_predictions(
 
             X_aug = np.column_stack([np.ones(len(X_fit)), X_fit])
             XtX = X_aug.T @ X_aug
-            penalty = np.eye(K + 1) * lambda_
+            penalty = np.eye(K + 1) * current_lambda
             penalty[0, 0] = 0.0
             try:
                 last_beta = np.linalg.solve(XtX + penalty, X_aug.T @ y_fit)
