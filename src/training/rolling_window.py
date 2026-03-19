@@ -1,11 +1,12 @@
 """
 Rolling window training loop.
 
-At each prediction time t:
-1. Train window = [t - M - tau_h - h, t - tau_h - h)
-2. Buffer       = [t - tau_h - h, t - h)  (excluded from training)
+At each prediction time t (paper Section 4.2):
+1. Train window = [t - tau_h - M, t - tau_h)   (M bars)
+2. Buffer       = [t - tau_h, t)                (tau_h bars, excluded)
 3. Target       = return over [t, t+h]
 
+tau_h >= h ensures no information leakage.
 For pooled forecasting: stack all stocks × time steps in train window.
 """
 
@@ -42,11 +43,14 @@ def get_train_indices(
     """
     Compute [train_start, train_end) index slice for prediction at time t.
 
+    Paper: training over s from (t - tau_h - M) to (t - tau_h - 1).
+    In Python slicing: [t - tau_h - M, t - tau_h).
+    No need to subtract h because tau_h >= h (Table 7) already ensures
+    no information leakage.
+
     Returns None if the window extends before the start of the series.
     """
-    # Target is at t+h; buffer starts at t-tau_h; train ends at t-tau_h-h
-    h = max(cfg.horizon_steps, 1)
-    train_end = t - cfg.buffer_bars - h + 1
+    train_end = t - cfg.buffer_bars
     train_start = train_end - cfg.train_window_bars
 
     if train_start < 0 or train_end <= train_start:
@@ -126,14 +130,23 @@ def rolling_predictions(
             if len(y_fit) < K + 2:
                 continue
 
-            X_aug = np.column_stack([np.ones(len(X_fit)), X_fit])
+            # Standardize features for anisotropic ridge effect (paper: diagonal Lambda)
+            scale = np.std(X_fit, axis=0)
+            scale[scale < 1e-10] = 1.0
+            X_fit_scaled = X_fit / scale
+
+            X_aug = np.column_stack([np.ones(len(X_fit_scaled)), X_fit_scaled])
             XtX = X_aug.T @ X_aug
             penalty = np.eye(K + 1) * current_lambda
             penalty[0, 0] = 0.0
             try:
-                last_beta = np.linalg.solve(XtX + penalty, X_aug.T @ y_fit)
+                beta_std = np.linalg.solve(XtX + penalty, X_aug.T @ y_fit)
             except np.linalg.LinAlgError:
-                last_beta = np.linalg.lstsq(XtX + penalty, X_aug.T @ y_fit, rcond=None)[0]
+                beta_std = np.linalg.lstsq(XtX + penalty, X_aug.T @ y_fit, rcond=None)[0]
+
+            # Convert back to original scale
+            last_beta = beta_std.copy()
+            last_beta[1:] /= scale
 
         if last_beta is None:
             continue

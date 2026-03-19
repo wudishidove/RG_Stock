@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.evaluation.metrics import msfe, cumulative_msfe_ratio, oos_r2
 from src.evaluation.diebold_mariano import diebold_mariano_test
 from src.training.hyperparams import load_horizon_configs
+from src.data.panel_builder import build_future_return_panel
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -51,7 +52,10 @@ def main() -> None:
         h = max(cfg.horizon_steps, 1)
 
         predictions = pd.read_parquet(pred_path)
-        actual_df = np.log(close_panel).diff(h).shift(-h)  # approximate targets
+        session_dates = close_panel.index.to_series().dt.date
+        actual_df = build_future_return_panel(
+            close_panel, cfg.horizon_steps, session_dates=session_dates
+        )
         actual = actual_df.reindex(columns=predictions.columns).values
         pred = predictions.values
 

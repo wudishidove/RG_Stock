@@ -64,7 +64,10 @@ def build_signals_causal(
             continue
 
         start = max(0, t - pca_lookback)
-        window = returns_panel[start:t]   # strictly before t
+        window = returns_panel[start:t].copy()   # strictly before t
+        # Mask overnight returns (first bar of each session contains overnight jump)
+        boundary_slice = session_boundary[start:t]
+        window[boundary_slice] = np.nan
         Tw, _ = window.shape
 
         # Exclude stocks with too many missing values in window

@@ -15,25 +15,27 @@ _EPS = 1e-10
 
 def aggregate_residuals(residuals: np.ndarray, P: int) -> np.ndarray:
     """
-    Compute aggregated residuals U_hat[P, t] = sum_{s=t-P+1}^{t} v_hat[s].
+    Compute aggregated residuals U_hat[P, t] = sum_{s=t-P}^{t} v_hat[s].
+
+    Paper equation: P+1 terms (from t-P to t inclusive).
 
     Parameters
     ----------
     residuals : (T × N) idiosyncratic residuals.
-    P         : aggregation window.
+    P         : aggregation window parameter.
 
     Returns
     -------
-    (T × N) aggregated residuals (first P-1 rows are NaN).
+    (T × N) aggregated residuals (first P rows are NaN).
     """
     T, N = residuals.shape
     U = np.full_like(residuals, np.nan)
-    if T < P:
+    if T < P + 1:
         return U
-    # Cumulative sum over rolling window of size P
+    # Cumulative sum over rolling window of size P+1 (paper: sum from t-P to t)
     cs = np.nancumsum(residuals, axis=0)
-    U[P - 1:] = cs[P - 1:]
-    U[P:] -= cs[:T - P]
+    U[P:] = cs[P:]
+    U[P + 1:] -= cs[:T - P - 1]
     return U
 
 

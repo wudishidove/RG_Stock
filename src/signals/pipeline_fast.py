@@ -25,6 +25,7 @@ _W: dict = {}
 
 def _init_worker(
     returns_panel: np.ndarray,
+    session_boundary: np.ndarray,
     pca_lookback: int,
     n_pca_components: int,
     p_levels: list[int],
@@ -32,6 +33,7 @@ def _init_worker(
     eps: float,
 ) -> None:
     _W["rp"] = returns_panel
+    _W["sb"] = session_boundary
     _W["pl"] = pca_lookback
     _W["npc"] = n_pca_components
     _W["plevs"] = p_levels
@@ -54,7 +56,10 @@ def _process_t(t: int):
     eps = _W["eps"]
 
     start = max(0, t - pca_lookback)
-    window = rp[start:t]  # strictly before t
+    window = rp[start:t].copy()  # strictly before t
+    # Mask overnight returns (first bar of each session contains overnight jump)
+    boundary_slice = _W["sb"][start:t]
+    window[boundary_slice] = np.nan
 
     # Exclude stocks with too many missing values in window
     miss_frac = np.mean(np.isnan(window), axis=0)
@@ -138,6 +143,7 @@ def build_signals_causal(
         initializer=_init_worker,
         initargs=(
             returns_panel,
+            session_boundary,
             pca_lookback,
             n_pca_components,
             p_levels,

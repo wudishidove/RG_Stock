@@ -31,13 +31,16 @@ def test_pca_factors_standardized():
 
 
 def test_aggregate_residuals_sum():
-    """U_hat[P, t] should equal sum of residuals in window."""
+    """U_hat[P, t] should equal sum of P+1 residuals (paper: from t-P to t)."""
     T, N = 20, 3
     residuals = np.arange(T * N, dtype=float).reshape(T, N)
     P = 5
     U = aggregate_residuals(residuals, P)
-    for t in range(P - 1, T):
-        expected = residuals[t - P + 1:t + 1].sum(axis=0)
+    # First P rows should be NaN
+    assert np.all(np.isnan(U[:P]))
+    # From index P onwards, sum should be P+1 terms (t-P to t inclusive)
+    for t in range(P, T):
+        expected = residuals[t - P:t + 1].sum(axis=0)
         np.testing.assert_allclose(U[t], expected)
 
 

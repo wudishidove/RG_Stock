@@ -50,13 +50,22 @@ def daily_cv_lambda(
     val_targets = targets[split_idx:].reshape((T - split_idx) * N)
     val_valid = valid_mask[split_idx:].reshape((T - split_idx) * N)
 
-    X_train = np.column_stack([np.ones(train_valid.sum()), train_states[train_valid]])
+    X_train_raw = train_states[train_valid]
     y_train = train_targets[train_valid]
-    X_val = np.column_stack([np.ones(val_valid.sum()), val_states[val_valid]])
+    X_val_raw = val_states[val_valid]
     y_val = val_targets[val_valid]
 
     if len(y_train) < K + 2 or len(y_val) < 2:
         return lambda_candidates[len(lambda_candidates) // 2]
+
+    # Standardize features for anisotropic ridge effect (paper: diagonal Lambda)
+    scale = np.std(X_train_raw, axis=0)
+    scale[scale < 1e-10] = 1.0
+    X_train_scaled = X_train_raw / scale
+    X_val_scaled = X_val_raw / scale
+
+    X_train = np.column_stack([np.ones(len(X_train_scaled)), X_train_scaled])
+    X_val = np.column_stack([np.ones(len(X_val_scaled)), X_val_scaled])
 
     XtX = X_train.T @ X_train
     Xty = X_train.T @ y_train

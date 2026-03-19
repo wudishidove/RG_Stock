@@ -69,8 +69,9 @@ def oos_r2(
         y = y[v]
         yhat = yhat[v]
 
-    y = y[~np.isnan(y) & ~np.isnan(yhat)]
-    yhat = yhat[~np.isnan(y) & ~np.isnan(yhat)]
+    mask = ~np.isnan(y) & ~np.isnan(yhat)
+    y = y[mask]
+    yhat = yhat[mask]
 
     ss_res = np.sum((y - yhat) ** 2)
     ss_tot = np.sum((y - np.mean(y)) ** 2)

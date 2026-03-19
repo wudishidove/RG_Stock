@@ -32,12 +32,21 @@ def extract_pca_factors(
     T, N = returns.shape
     X = returns.copy()
 
-    # Mask NaN columns
-    valid_cols = ~np.any(np.isnan(X), axis=0)
-    X_valid = X[:, valid_cols]
+    # Impute NaN with column means (instead of dropping entire columns)
+    nan_mask = np.isnan(X)
+    col_has_data = ~np.all(nan_mask, axis=0)  # columns with at least one non-NaN
+    n_valid_cols = col_has_data.sum()
 
-    if X_valid.shape[1] < n_components:
-        n_components = max(1, X_valid.shape[1])
+    if n_valid_cols < n_components:
+        n_components = max(1, n_valid_cols)
+
+    # Fill NaN with column mean for columns that have data
+    col_means = np.nanmean(X[:, col_has_data], axis=0)
+    X_valid = X[:, col_has_data].copy()
+    for j in range(X_valid.shape[1]):
+        col_nans = np.isnan(X_valid[:, j])
+        if col_nans.any():
+            X_valid[col_nans, j] = col_means[j]
 
     if standardize:
         std = X_valid.std(axis=0)
@@ -48,9 +57,9 @@ def extract_pca_factors(
     scores = pca.fit_transform(X_valid)   # (T × J)
     components = pca.components_.T       # (N_valid × J)
 
-    # Expand back to full N (missing stocks get NaN loadings)
+    # Expand back to full N (columns with no data get NaN loadings)
     full_loadings = np.full((N, n_components), np.nan)
-    full_loadings[valid_cols] = components
+    full_loadings[col_has_data] = components
 
     return scores, full_loadings
 

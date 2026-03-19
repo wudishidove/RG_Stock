@@ -32,35 +32,28 @@ def ols_residuals(
     # Design matrix: [1, F_1, ..., F_J]
     X = np.column_stack([np.ones(T), factors])   # (T × (J+1))
 
-    # Valid stocks: no NaN in either returns or factors
-    factor_nan = np.any(np.isnan(factors), axis=1)   # (T,)
-    returns_nan = np.any(np.isnan(returns), axis=0)  # (N,) — stocks with any NaN
+    # Per-time valid mask for factors
+    factor_nan = np.any(np.isnan(factors), axis=1)   # (T,) True where factors NaN
 
     drift = np.full(N, np.nan)
     loadings = np.full((N, J), np.nan)
     residuals = np.full((T, N), np.nan)
 
-    if factor_nan.any():
-        valid_t = ~factor_nan
-        X_clean = X[valid_t]
-        R_clean = returns[valid_t]
-    else:
-        X_clean = X
-        R_clean = returns
-
     for i in range(N):
-        if returns_nan[i]:
+        y_i = returns[:, i]
+        # Per-stock: use rows where both factors and this stock's return are valid
+        valid_rows = ~np.isnan(y_i) & ~factor_nan
+        if valid_rows.sum() < J + 2:
             continue
-        y = R_clean[:, i]
-        if np.any(np.isnan(y)):
-            continue
+        X_valid = X[valid_rows]
+        y_valid = y_i[valid_rows]
         try:
-            coeffs, _, _, _ = np.linalg.lstsq(X_clean, y, rcond=None)
+            coeffs, _, _, _ = np.linalg.lstsq(X_valid, y_valid, rcond=None)
         except np.linalg.LinAlgError:
             continue
         drift[i] = coeffs[0]
         loadings[i] = coeffs[1:]
-        resid_full = returns[:, i] - X @ np.concatenate([[coeffs[0]], coeffs[1:]])
-        residuals[:, i] = resid_full
+        # Compute residuals for all rows (NaN rows propagate NaN naturally)
+        residuals[:, i] = returns[:, i] - X @ np.concatenate([[coeffs[0]], coeffs[1:]])
 
     return drift, loadings, residuals
