@@ -65,7 +65,8 @@ RG/
 ├── scripts/
 │   ├── fetch_massive_data.py     # 抓取並快取 Polygon 分鐘資料
 │   ├── build_intraday_panel.py   # 建立 10 分鐘面板
-│   ├── build_signals.py          # 建構因果信號
+│   ├── build_signals.py          # 建構因果信號（單執行緒）
+│   ├── build_signals_fast.py     # 建構因果信號（多進程平行化，推薦）
 │   ├── train_esn.py              # 訓練 ESN（全視野）
 │   ├── evaluate.py               # 計算指標與繪圖
 │   └── run_all.py                # 一鍵執行全管線
@@ -147,8 +148,9 @@ python scripts/fetch_massive_data.py \
 python scripts/build_intraday_panel.py \
     --universe-file data/raw/universe.txt
 
-# 3. 建構因果信號（PCA + OU）
-python scripts/build_signals.py
+# 3. 建構因果信號（PCA + OU）— 推薦使用 fast 版本
+python scripts/build_signals_fast.py
+# 或使用單執行緒版本：python scripts/build_signals.py
 
 # 4. 訓練 ESN（全部五個視野）
 python scripts/train_esn.py

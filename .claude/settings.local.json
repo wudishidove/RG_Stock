@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l /d/OneDrive/code/mygithub/RG_Stock/src/data/*.py /d/OneDrive/code/mygithub/RG_Stock/src/model/*.py /d/OneDrive/code/mygithub/RG_Stock/src/signals/*.py)"
+    ]
+  }
+}

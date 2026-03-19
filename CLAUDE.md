@@ -22,7 +22,8 @@ python scripts/run_all.py --skip-fetch --skip-panel  # skip stages
 # Run individual pipeline stages
 python scripts/fetch_massive_data.py --tickers-file data/raw/candidate_tickers.txt --from-date 2024-09-01 --to-date 2025-12-31
 python scripts/build_intraday_panel.py --universe-file data/raw/universe.txt
-python scripts/build_signals.py
+python scripts/build_signals_fast.py   # recommended (multiprocessing, ~7x faster)
+python scripts/build_signals.py        # single-threaded fallback
 python scripts/train_esn.py
 python scripts/evaluate.py
 
@@ -43,6 +44,12 @@ The pipeline has 5 sequential stages, each reading from the previous stage's out
 4. **Training** (`src/training/`) — Rolling window with daily cross-validation (1-week lookback). Trains independently for 5 horizons: 10min, 30min, 60min, 2hr, EOD.
 
 5. **Evaluation** (`src/evaluation/`) — MSFE, OOS R², cumulative MSFE ratios, Diebold-Mariano test (Newey-West HAC), Model Confidence Set.
+
+## Important Conventions
+
+- Prefer `build_signals_fast.py` for signal construction (multiprocessing, ~7x faster than single-threaded version)
+- Fast version output is bit-identical to original (verified via MD5)
+- API key stored in `config/massive_key.txt`
 
 ## Configuration
 
